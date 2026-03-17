@@ -8,6 +8,7 @@ from app.services.ytmusic_service import YTMusicService
 from app.services.stream_service import StreamService
 from app.core.cache import cache_response
 from app.schemas.track import TrackSearchItem, TrackDetail
+from app.schemas.stream import StreamResponse
 
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
@@ -35,13 +36,13 @@ async def get_track_info(video_id: str):
     except Exception as e:
          raise HTTPException(status_code=502, detail=f"Error communicating with upstream service: {e}")
 
-@router.get("/streams/{video_id}")
+@router.get("/streams/{video_id}", response_model=StreamResponse)
 @cache_response(ttl=300)
 async def get_stream(video_id: str):
     try:
-        stream_url = await StreamService.get_stream_url(video_id)
-        if not stream_url:
+        stream_data = await StreamService.get_stream_data(video_id)
+        if not stream_data or not stream_data.get("stream_url"):
             raise HTTPException(status_code=404, detail="Stream not found")
-        return {"url": stream_url}
+        return stream_data
     except Exception as e:
-         raise HTTPException(status_code=502, detail=f"Error extracting stream: {e}")
+         raise HTTPException(status_code=500, detail=f"Error extracting stream: {e}")
